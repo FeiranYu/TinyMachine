@@ -1,7 +1,10 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<ctype.h>
+
+using namespace std;
 
 #ifndef TRUE
 #define TRUE 1
@@ -226,7 +229,7 @@ int atEOL(void)
 }/* atEOL */
 
 /**************************************************************/
-int error(char* msg, int lineNo, int instNo)
+int error(const char* msg, int lineNo, int instNo)
 {
 	printf("Line %d", lineNo);
 	if (instNo >= 0)printf(" (Instruction %d)", instNo);
@@ -279,7 +282,7 @@ int readInstructions(void)
 			op = opHALT;
 			while ((op < opRALim)
 				&& (strncmp(opCodeTab[op], word, 4) != 0))
-				op++;
+				op=OPCODE ((int)op+1);
 			if (strncmp(opCodeTab[op], word, 4) != 0)
 				return error("Illegal opcode", lineNo, loc);
 			switch (opClass(op))
@@ -465,6 +468,124 @@ int doCommand(void)
 			"Terminate the simulation\n");
 		break;
 	case 'p':
+		icountflag = !icountflag;
+		printf("Printing instruction count now ");
+		if (icountflag)printf("on.\n"); else printf("off.\n");
+		break;
 
+	case 's':
+		if (atEOL()) stepcnt = 1;
+		else if (getNum())stepcnt = abs(num);
+		else printf("Step count?\n");
+		break;
+
+	case 'g':stepcnt = 1; break;
+
+	case 'r':
+		for (i = 0; i < NO_REGS;i++)
+		{
+			printf("%1d: %4d     ", i, reg[i]);
+			if ((i % 4) == 3)printf("\n");
+		}
+		break;
+	case 'i':
+		printcnt = 1;
+		if (getNum())
+		{
+			iloc = num;
+			if (getNum())printcnt = num;
+		}
+		if (!atEOL())
+			printf("Instruction location?\n");
+		else
+		{
+			while ((iloc >= 0) && (dloc < DADDR_SIZE) && (printcnt > 0))
+			{
+				printf("%5d: %5d\n", dloc, dMem[dloc]);
+				dloc++; 
+				printcnt--;
+			}
+
+		}
+		break;
+
+	case 'c':
+		iloc = 0;
+		dloc = 0;
+		stepcnt = 0;
+		for (regNo = 0; regNo < NO_REGS; regNo++)
+		{
+			reg[regNo] = 0;
+		}
+		dMem[0] = DADDR_SIZE - 1;
+		for (loc = 1; loc < DADDR_SIZE; loc++)
+		{
+			dMem[loc] = 0;
+		}
+		break;
+	case 'q':return FALSE; /* break */
+	default:printf("Command %c unknown.\n", cmd); break;
+	}/* case */
+	stepResult = srOKAY;
+	if (stepcnt > 0)
+	{
+		if (cmd == 'g')
+		{
+			stepcnt = 0;
+			while (stepResult == srOKAY)
+			{
+				iloc = reg[PC_REG];
+				if (traceflag)writeInstruction(iloc);
+				stepResult = stepTM();
+				stepcnt++;
+
+			}
+			if (icountflag)
+				printf("Number of instructions executed = %d\n", stepcnt);
+
+		}
+		else
+		{
+			while ((stepcnt > 0) && (stepResult == srOKAY))
+			{
+				iloc = reg[PC_REG];
+				if (traceflag)writeInstruction(iloc);
+				stepResult = stepTM();
+				stepcnt--;
+			}
+		}
+		printf("%s\n", stepResultTab[stepResult]);
 	}
+	return TRUE;
+}/* doCommand */
+
+int main(int argc, char* argv[])
+{
+	if (argc != 2)
+	{
+		printf("usage: %s <filename>\n", argv[0]);
+		exit(1);
+	}
+	strcpy(pgmName, argv[1]);
+	if (strchr(pgmName, '.') == NULL)
+		strcat(pgmName, ".tm");
+	pgm = fopen(pgmName, "r");
+	if (pgm == NULL)
+	{
+		printf("file '%s' not found\n", pgmName);
+		exit(1);
+	}
+
+	/* read the program */
+	if (!readInstructions())
+		exit(1);
+	/* switch input file to terminal */
+	/* reset ( input ) */
+	/* read-eval-print */
+	printf("TM simulation (enter h for help)...\n");
+	do
+		done = !doCommand();
+	while (!done);
+	printf("Simulation done.\n");
+	return 0;
 }
