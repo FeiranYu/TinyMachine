@@ -1,8 +1,10 @@
+
 #define _CRT_SECURE_NO_WARNINGS
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<ctype.h>
+
 
 using namespace std;
 
@@ -15,7 +17,7 @@ using namespace std;
 
 /******const*****/
 #define IADDR_SIZE 1024 /* increase for large programs */
-#define DADDR_SIZE 1024 /* omcrease fpr ;arge [rpgrams */
+#define DADDR_SIZE 1024 /* omcrease fpr large programs */
 #define NO_REGS 8
 #define PC_REG 7
 
@@ -87,7 +89,7 @@ const char* opCodeTab[]
 = { "HALT","IN","OUT","ADD","SUB","MUL","DIV","????",
 /* RR opcodes */
 "LD","ST","????",/*RM opcodes*/
-"LDA","LDC","JLT","JLE","JGE","JEQ","JNE","????"
+"LDA","LDC","JLT","JLE","JGT","JGE","JEQ","JNE","????"
 /* RA opcodes */
 };
 
@@ -121,7 +123,7 @@ void writeInstruction(int loc)
 	printf("%5d: ", loc);
 	if ((loc >= 0) && (loc < IADDR_SIZE))
 	{
-		printf("%6s%3d,",opCodeTab[iMem[loc].iop], iMem[loc].iarg1);
+		printf("%6s%3d,", opCodeTab[iMem[loc].iop], iMem[loc].iarg1);
 		switch (opClass(iMem[loc].iop))
 		{
 		case opclRR:printf("%1d,%1d", iMem[loc].iarg2, iMem[loc].iarg3);
@@ -146,10 +148,9 @@ void getCh(void)
 /**************************************************************/
 int nonBlank(void)
 {
-	while ((inCol < lineLen)&&(in_Line[inCol]==' '))
-	{
+	while ((inCol < lineLen)
+		&& (in_Line[inCol] == ' '))
 		inCol++;
-	}
 	if (inCol < lineLen)
 	{
 		ch = in_Line[inCol];
@@ -160,7 +161,7 @@ int nonBlank(void)
 		ch = ' ';
 		return FALSE;
 	}
-}/* nonBlank */
+} /* nonBlank */
 
 /**************************************************************/
 int getNum(void)
@@ -183,7 +184,7 @@ int getNum(void)
 		while (isdigit(ch))
 		{
 			temp = TRUE;
-			term = term*10+ (ch - '0');
+			term = term * 10 + (ch - '0');
 			getCh();
 		}
 		num = num + (term * sign);
@@ -282,7 +283,7 @@ int readInstructions(void)
 			op = opHALT;
 			while ((op < opRALim)
 				&& (strncmp(opCodeTab[op], word, 4) != 0))
-				op=OPCODE ((int)op+1);
+				op = OPCODE((int)op + 1);
 			if (strncmp(opCodeTab[op], word, 4) != 0)
 				return error("Illegal opcode", lineNo, loc);
 			switch (opClass(op))
@@ -293,8 +294,9 @@ int readInstructions(void)
 				arg1 = num;
 				if (!skipCh(','))
 					return error("Missing comma", lineNo, loc);
-				if((!getNum())||(num<0)||(num>=NO_REGS))
+				if ((!getNum()) || (num < 0) || (num >= NO_REGS))
 					return error("Bad second register", lineNo, loc);
+				arg2 = num;
 				if (!skipCh(','))
 					return error("Missing comma", lineNo, loc);
 				if ((!getNum()) || (num < 0) || (num >= NO_REGS))
@@ -305,7 +307,7 @@ int readInstructions(void)
 			case opclRM:
 			case opclRA:
 				/**************************************************************/
-				if ((!getNum()) || (num < 0) || (num = NO_REGS))
+				if ((!getNum()) || (num < 0) || (num >= NO_REGS))
 					return error("Bad first registrt", lineNo, loc);
 				arg1 = num;
 				if (!skipCh(','))
@@ -330,13 +332,14 @@ int readInstructions(void)
 }/* readInstructions */
 
 
-/**************************************************************/
+/********************************************/
 STEPRESULT stepTM(void)
 {
 	INSTRUCTION currentinstruction;
 	int pc;
 	int r, s, t, m;
 	int ok;
+
 	pc = reg[PC_REG];
 	if ((pc < 0) || (pc > IADDR_SIZE))
 		return srIMEM_ERR;
@@ -345,80 +348,86 @@ STEPRESULT stepTM(void)
 	switch (opClass(currentinstruction.iop))
 	{
 	case opclRR:
-		/**************************************/
+		/***********************************/
 		r = currentinstruction.iarg1;
 		s = currentinstruction.iarg2;
 		t = currentinstruction.iarg3;
 		break;
 
 	case opclRM:
-		/**************************************/
+		/***********************************/
 		r = currentinstruction.iarg1;
 		s = currentinstruction.iarg3;
 		m = currentinstruction.iarg2 + reg[s];
 		if ((m < 0) || (m > DADDR_SIZE))
 			return srDMEM_ERR;
 		break;
-		
+
 	case opclRA:
-		/**************************************/
+		/***********************************/
 		r = currentinstruction.iarg1;
 		s = currentinstruction.iarg3;
 		m = currentinstruction.iarg2 + reg[s];
 		break;
-		
-	}/*case*/
+	} /* case */
 
 	switch (currentinstruction.iop)
-	{
-		/* RR instructions */
+	{ /* RR instructions */
 	case opHALT:
-		/**************************************/
+		/***********************************/
 		printf("HALT: %1d,%1d,%1d\n", r, s, t);
 		return srHALT;
+		/* break; */
+
 	case opIN:
-		/**************************************/
+		/***********************************/
 		do
 		{
 			printf("Enter value for IN instruction: ");
 			fflush(stdin);
-			gets(in_Line);
+			fflush(stdout);
+			gets_s(in_Line);
+			lineLen = strlen(in_Line);
 			inCol = 0;
 			ok = getNum();
-			if (!ok)printf("Illegal value\n");
+			if (!ok) printf("Illegal value\n");
 			else reg[r] = num;
 		} while (!ok);
 		break;
+
 	case opOUT:
-		/**************************************/
 		printf("OUT instruction prints: %d\n", reg[r]);
 		break;
-	case opADD:reg[r] = reg[s] + reg[t]; break;
-	case opSUB:reg[r] = reg[s] - reg[t]; break;
-	case opMUL:reg[r] = reg[s] * reg[t]; break;
+	case opADD:  reg[r] = reg[s] + reg[t];  break;
+	case opSUB:  reg[r] = reg[s] - reg[t];  break;
+	case opMUL:  reg[r] = reg[s] * reg[t];  break;
+
 	case opDIV:
-		/**************************************/
-		if (reg[t] != 0)reg[r] = reg[s] / reg[t];
+		/***********************************/
+		if (reg[t] != 0) reg[r] = reg[s] / reg[t];
 		else return srZERODIVIDE;
 		break;
-	/***************** RM instructions *********************/
-	case opLD:reg[r] = dMem[m]; break;
-	case opST:dMem[m] = reg[r]; break;
-	/***************** RA instructions *********************/
-	case opLDA:reg[r] = m; break;
-	case opLDC:reg[r] = currentinstruction.iarg2; break;
-	case opJLT:if (reg[r] < 0)reg[PC_REG] = m; break;
-	case opJLE:if (reg[r] <= 0)reg[PC_REG] = m; break;
-	case opJGT:if (reg[r] > 0)reg[PC_REG] = m; break;
-	case opJGE:if (reg[r] >= 0)reg[PC_REG] = m; break;
-	case opJEQ:if (reg[r] == 0)reg[PC_REG] = m; break;
-	case opJNE:if (reg != 0)reg[PC_REG] = m; break;
+
+		/*************** RM instructions ********************/
+	case opLD:    reg[r] = dMem[m];  break;
+	case opST:    dMem[m] = reg[r];  break;
+
+		/*************** RA instructions ********************/
+	case opLDA:    reg[r] = m; break;
+	case opLDC:    reg[r] = currentinstruction.iarg2;   break;
+	case opJLT:    if (reg[r] < 0) reg[PC_REG] = m; break;
+	case opJLE:    if (reg[r] <= 0) reg[PC_REG] = m; break;
+	case opJGT:    if (reg[r] > 0) reg[PC_REG] = m; break;
+	case opJGE:    if (reg[r] >= 0) reg[PC_REG] = m; break;
+	case opJEQ:    if (reg[r] == 0) reg[PC_REG] = m; break;
+	case opJNE:    if (reg[r] != 0) reg[PC_REG] = m; break;
+
 		/* end of legal instructions */
-	}/* case */
+	} /* case */
 	return srOKAY;
 } /* stepTM */
 
-/**************************************************************/
+/********************************************/
 int doCommand(void)
 {
 	char cmd;
@@ -430,7 +439,9 @@ int doCommand(void)
 	{
 		printf("Enter command: ");
 		fflush(stdin);
-		gets(in_Line);
+		fflush(stdout);
+		gets_s(in_Line);
+		lineLen = strlen(in_Line);
 		inCol = 0;
 	} while (!getWord());
 
@@ -438,94 +449,123 @@ int doCommand(void)
 	switch (cmd)
 	{
 	case 't':
-		/**************************************************************/
-		traceflag != traceflag;
+		/***********************************/
+		traceflag = !traceflag;
 		printf("Tracing now ");
-		if (traceflag)printf("on.\n"); else printf("off.\n");
+		if (traceflag) printf("on.\n"); else printf("off.\n");
 		break;
 
 	case 'h':
-		/**************************************************************/
+		/***********************************/
 		printf("Commands are:\n");
-		printf("    s(tep <n>         "\
+		printf("   s(tep <n>      "\
 			"Execute n (default 1) TM instructions\n");
-		printf("    g(0               "\
+		printf("   g(o            "\
 			"Execute TM instructions until HALT\n");
-		printf("    r(egs"\
+		printf("   r(egs          "\
 			"Print the contents of the registers\n");
-		printf("    i(Mem <b <n>>"\
+		printf("   i(Mem <b <n>>  "\
 			"Print n iMem locations starting at b\n");
-		printf("    d(Mem <b <n>>"\
+		printf("   d(Mem <b <n>>  "\
 			"Print n dMem locations starting at b\n");
-		printf("    t(race"\
+		printf("   t(race         "\
+			"Toggle instruction trace\n");
+		printf("   p(rint         "\
 			"Toggle print of total instructions executed"\
 			" ('go' only)\n");
-		printf("    c(lear"\
+		printf("   c(lear         "\
 			"Reset simulator for new execution of program\n");
-		printf("    h(elp"\
+		printf("   h(elp          "\
 			"Cause this list of commands to be printed\n");
-		printf("    q(uit"\
+		printf("   q(uit          "\
 			"Terminate the simulation\n");
 		break;
+
 	case 'p':
+		/***********************************/
 		icountflag = !icountflag;
 		printf("Printing instruction count now ");
-		if (icountflag)printf("on.\n"); else printf("off.\n");
+		if (icountflag) printf("on.\n"); else printf("off.\n");
 		break;
 
 	case 's':
-		if (atEOL()) stepcnt = 1;
-		else if (getNum())stepcnt = abs(num);
-		else printf("Step count?\n");
+		/***********************************/
+		if (atEOL())  stepcnt = 1;
+		else if (getNum())  stepcnt = abs(num);
+		else   printf("Step count?\n");
 		break;
 
-	case 'g':stepcnt = 1; break;
+	case 'g':   stepcnt = 1;     break;
 
 	case 'r':
-		for (i = 0; i < NO_REGS;i++)
+		/***********************************/
+		for (i = 0; i < NO_REGS; i++)
 		{
-			printf("%1d: %4d     ", i, reg[i]);
-			if ((i % 4) == 3)printf("\n");
+			printf("%1d: %4d    ", i, reg[i]);
+			if ((i % 4) == 3) printf("\n");
 		}
 		break;
+
 	case 'i':
+		/***********************************/
 		printcnt = 1;
 		if (getNum())
 		{
 			iloc = num;
-			if (getNum())printcnt = num;
+			if (getNum()) printcnt = num;
 		}
 		if (!atEOL())
-			printf("Instruction location?\n");
+			printf("Instruction locations?\n");
 		else
 		{
-			while ((iloc >= 0) && (dloc < DADDR_SIZE) && (printcnt > 0))
+			while ((iloc >= 0) && (iloc < IADDR_SIZE)
+				&& (printcnt > 0))
 			{
-				printf("%5d: %5d\n", dloc, dMem[dloc]);
-				dloc++; 
+				writeInstruction(iloc);
+				iloc++;
 				printcnt--;
 			}
+		}
+		break;
 
+	case 'd':
+		/***********************************/
+		printcnt = 1;
+		if (getNum())
+		{
+			dloc = num;
+			if (getNum()) printcnt = num;
+		}
+		if (!atEOL())
+			printf("Data locations?\n");
+		else
+		{
+			while ((dloc >= 0) && (dloc < DADDR_SIZE)
+				&& (printcnt > 0))
+			{
+				printf("%5d: %5d\n", dloc, dMem[dloc]);
+				dloc++;
+				printcnt--;
+			}
 		}
 		break;
 
 	case 'c':
+		/***********************************/
 		iloc = 0;
 		dloc = 0;
 		stepcnt = 0;
 		for (regNo = 0; regNo < NO_REGS; regNo++)
-		{
 			reg[regNo] = 0;
-		}
 		dMem[0] = DADDR_SIZE - 1;
 		for (loc = 1; loc < DADDR_SIZE; loc++)
-		{
 			dMem[loc] = 0;
-		}
 		break;
-	case 'q':return FALSE; /* break */
-	default:printf("Command %c unknown.\n", cmd); break;
-	}/* case */
+
+	case 'q': return FALSE;  /* break; */
+
+	default: printf("Command %c unknown.\n", cmd); break;
+	}  /* case */
 	stepResult = srOKAY;
 	if (stepcnt > 0)
 	{
@@ -535,21 +575,19 @@ int doCommand(void)
 			while (stepResult == srOKAY)
 			{
 				iloc = reg[PC_REG];
-				if (traceflag)writeInstruction(iloc);
+				if (traceflag) writeInstruction(iloc);
 				stepResult = stepTM();
 				stepcnt++;
-
 			}
 			if (icountflag)
 				printf("Number of instructions executed = %d\n", stepcnt);
-
 		}
 		else
 		{
 			while ((stepcnt > 0) && (stepResult == srOKAY))
 			{
 				iloc = reg[PC_REG];
-				if (traceflag)writeInstruction(iloc);
+				if (traceflag) writeInstruction(iloc);
 				stepResult = stepTM();
 				stepcnt--;
 			}
@@ -557,10 +595,16 @@ int doCommand(void)
 		printf("%s\n", stepResultTab[stepResult]);
 	}
 	return TRUE;
-}/* doCommand */
+} /* doCommand */
+
+
+/********************************************/
+/* E X E C U T I O N   B E G I N S   H E R E */
+/********************************************/
 
 int main(int argc, char* argv[])
 {
+	/*
 	if (argc != 2)
 	{
 		printf("usage: %s <filename>\n", argv[0]);
@@ -569,6 +613,8 @@ int main(int argc, char* argv[])
 	strcpy(pgmName, argv[1]);
 	if (strchr(pgmName, '.') == NULL)
 		strcat(pgmName, ".tm");
+		*/
+	strcpy(pgmName, "sample.tm");
 	pgm = fopen(pgmName, "r");
 	if (pgm == NULL)
 	{
@@ -580,9 +626,9 @@ int main(int argc, char* argv[])
 	if (!readInstructions())
 		exit(1);
 	/* switch input file to terminal */
-	/* reset ( input ) */
+	/* reset( input ); */
 	/* read-eval-print */
-	printf("TM simulation (enter h for help)...\n");
+	printf("TM  simulation (enter h for help)...\n");
 	do
 		done = !doCommand();
 	while (!done);
