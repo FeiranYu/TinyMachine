@@ -434,6 +434,7 @@ int doCommand(void)
 	int stepcnt = 0, i;
 	int printcnt;
 	int stepResult;
+	int aimInstLoc;
 	int regNo, loc;
 	do
 	{
@@ -475,6 +476,8 @@ int doCommand(void)
 			" ('go' only)\n");
 		printf("   c(lear         "\
 			"Reset simulator for new execution of program\n");
+		printf("   j(ump  <b>     "\
+			"Jump to instruction b\n");
 		printf("   h(elp          "\
 			"Cause this list of commands to be printed\n");
 		printf("   q(uit          "\
@@ -506,6 +509,14 @@ int doCommand(void)
 		}
 		break;
 
+	case 'j':
+		if (getNum())
+		{
+			aimInstLoc = abs(num);
+			stepcnt = 1;
+		}
+		else   printf("Jump Loc?\n");
+		break;
 	case 'i':
 		/***********************************/
 		printcnt = 1;
@@ -569,7 +580,21 @@ int doCommand(void)
 	stepResult = srOKAY;
 	if (stepcnt > 0)
 	{
-		if (cmd == 'g')
+		if (cmd == 'j')
+		{
+			stepcnt = 0;
+			do
+			{
+				iloc = reg[PC_REG];
+				if (traceflag) writeInstruction(iloc);
+				stepResult = stepTM();
+				stepcnt++;
+			} while (stepResult == srOKAY && iloc != aimInstLoc);
+			
+			if (icountflag)
+				printf("Number of instructions executed = %d\n", stepcnt);
+		}
+		else if (cmd == 'g')
 		{
 			stepcnt = 0;
 			while (stepResult == srOKAY)
