@@ -435,6 +435,7 @@ int doCommand(void)
 	int printcnt;
 	int stepResult;
 	int aimInstLoc;
+	int aimMemLoc;
 	int regNo, loc;
 	do
 	{
@@ -478,6 +479,8 @@ int doCommand(void)
 			"Reset simulator for new execution of program\n");
 		printf("   j(ump  <b>     "\
 			"Jump to instruction b\n");
+		printf("   f(ind change mem <b> "\
+			"run until mem b change\n");
 		printf("   h(elp          "\
 			"Cause this list of commands to be printed\n");
 		printf("   q(uit          "\
@@ -504,9 +507,26 @@ int doCommand(void)
 		/***********************************/
 		for (i = 0; i < NO_REGS; i++)
 		{
-			printf("%1d: %4d    ", i, reg[i]);
+			
+			if (i == 5)
+				printf("%1d(gp): %4d\t", i, reg[i]);
+			else if (i == 6)
+				printf("%1d(fp): %4d\t", i, reg[i]);
+			else if (i == 7)
+				printf("%1d(pc): %4d\t", i, reg[i]);
+			else 
+				printf("%5d: %4d \t", i, reg[i]);
 			if ((i % 4) == 3) printf("\n");
 		}
+		break;
+
+	case 'f':
+		if (getNum())
+		{
+			aimMemLoc = abs(num);
+			stepcnt = 1;
+		}
+		else printf("Mem Loc?\n");
 		break;
 
 	case 'j':
@@ -591,8 +611,19 @@ int doCommand(void)
 				stepcnt++;
 			} while (stepResult == srOKAY && iloc != aimInstLoc);
 			
-			if (icountflag)
-				printf("Number of instructions executed = %d\n", stepcnt);
+		}
+		else if (cmd == 'f')
+		{
+			stepcnt = 0;
+			int memValueOld = dMem[aimMemLoc];
+			do
+			{
+				iloc = reg[PC_REG];
+				if (traceflag) writeInstruction(iloc);
+				stepResult = stepTM();
+				stepcnt++;
+			} while (stepResult == srOKAY && memValueOld == dMem[aimMemLoc]);
+			printf("dMem[%d] change from %d to %d\n", aimMemLoc, memValueOld,dMem[aimMemLoc]);
 		}
 		else if (cmd == 'g')
 		{
